@@ -49,6 +49,13 @@ const userSchema = new mongoose.Schema({
    
     resetPasswordToken:String,
     resetPasswordExpire:Date,
+    activateToken:String,
+    activateExpire:Date,
+    isActivated:{
+        type:Boolean,
+        default:false,
+    }
+
 })
 
 
@@ -91,5 +98,14 @@ userSchema.methods.getResetPasswordToken = function(){
     this.resetPasswordExpire = Date.now() + 15*60*1000;
     return resetToken;
 }
+
+userSchema.methods.getActivateToken = function(){
+    const activateToken = crypto.randomBytes(20).toString("hex");
+    // Hashing activateToken and then adding it to userSchema
+    this.activateToken = crypto.createHash("sha256").update(activateToken).digest("hex");
+    this.activateExpire = Date.now() + 15*60*1000;
+    return activateToken;
+}
+
 
 module.exports = mongoose.model("User", userSchema);

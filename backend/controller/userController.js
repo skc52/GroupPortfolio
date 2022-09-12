@@ -40,14 +40,6 @@ exports.registerUser = async(req, res, next) => {
     }
 }
 
-exports.getAllUsers = async (req, res, next) =>{
-    const allUsers = await User.find();
-
-    res.status(200).json({
-        success:true,
-        allUsers,
-    })
-}
 
 
 // Log In User
@@ -171,4 +163,142 @@ exports.resetPassword = async(req, res, next) => {
 
     sendToken(user, 200, res);
 
+}
+
+//Send Activate email link
+exports.sendActivateLink = async(req, res, next) => {
+    const user = await User.findOne({email:req.body.email});
+    if (!user){
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    //if the account is already activated
+    if (!user.isActivated){
+        // Get reset password token
+        const activateToken = user.getActivateToken();
+        await user.save({validateBeforeSave:false});
+        const activateEmailUrl = `${req.protocol}://${req.get("host")}/api/v1/account/activate/${activateToken}`;
+        const message = `Click on the link below to activate your account \n ${activateEmailUrl}\n\n`
+        try {
+            await sendEmail({
+                email:user.email,
+                subject : "Account Activation Token",
+                message
+            });
+    
+            res.status(200).json({
+                success:true,
+                message:`Email sent to ${user.email} successfully`,
+            })
+        } catch (error) {
+            //Set the activateToken and expiry to undefined
+            user.activateToken = undefined;
+            user.activateExpire = undefined;
+            await user.save({validateBeforeSave:false});
+            return next(new ErrorHandler(error.message, 500));
+        }
+    }
+    else{
+        res.status(200).json({
+            success:true,
+            message:"User is already activated."
+        })
+    }
+}
+
+// Activate email
+exports.activateAccount = async(req, res, next) => {
+    const actvateToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+    const user = await User.findOne({
+        activateToken,
+        activateExpire:{$gt : Date.now()}
+    })
+
+    if (!user){
+        return next (new ErrorHandler("Activatoon token is invalid or has been expired", 400));
+    }
+
+    user.isActivated = true;
+    user.activateToken = undefined;
+    user.activateExpire = undefined;
+    await user.save();
+    
+}
+
+// update user profile
+exports.updateProfile = async(req, res, next) => {
+    try {
+        
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+
+
+// get all users
+exports.getAllUsers = async (req, res, next) =>{
+    const allUsers = await User.find();
+
+    res.status(200).json({
+        success:true,
+        allUsers,
+    })
+}
+
+//get a single user
+exports.getAUser = async(req, res, next)=>{
+    const user = await User.find(req.params.id);
+    if (!user){
+        return next(new ErrorHandler(`User with id : ${req.params.id} does not exist`));
+    }
+    res.status(200).json({
+        success:true,
+        user
+    })
+}
+
+
+//Update the role of a user
+exports.updateUserRole = async(req, res, next) => {
+    try {
+        const newUserData = {
+            role:req.body.role
+        }
+    
+        //we will add cloudinary later
+        const user = await User.findByIdAndUpdate(req.params.id, newUserData,{
+            new:true,
+            runValidators:true,
+            useFindAndModify:false,
+        });
+    
+        res.status(200).json({
+            success:true,
+            message:`User's role changed to ${req.body.role}`
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+// delete a user
+exports.deleteUser = async(req, res, next) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if(!user){
+            return next(new ErrorHandler(`User does not exist with id: ${req.params.id}`));
+        }
+
+        // TODO: we will remove cloudinary 
+
+        await user.remove();
+        res.status(200).json({
+            success:true,
+            message:"User deleted successfully!"
+        });
+    } catch (error) {
+        
+    }
 }
