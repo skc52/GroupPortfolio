@@ -1,20 +1,24 @@
 import React from 'react'
-
+import "./Comment.css"
 const Comment = () => {
   return (
     <>
-        <ul >
-                <li>Comment 1</li>
-                <ul>
-                    <li>Reply1 </li>
-                    <li>Reply2</li>
+        <ul className='commentShell'>
+            {/* Profile Icon Name Comment/Reply */}
+                <li className='comment'>Lorem ipsum, Lorem ipsum, dolor sit amet consectetur adipisicing elit. Earum eos ea aperiam maxime hic velit non ducimus quaerat optio recusandae? dolor sit amet consectetur adipisicing elit. Minus, tempore. <a href="">Reply</a> </li>
+                <ul className='ReplyThread'>
+                    <li className='reply'>Reply1 </li>
+                    <li className='reply'>Reply2</li>
                     <a href="">All Comments</a>
                 </ul>
-                <li>Comment 2</li>
-                <ul>
-                    <li>Reply1 </li>
-                    <li>Reply2</li>
+
+                <li className='comment'> adipisicing elit. Eon ducimus quaerat optio recusandae? dolor sit amet consectetur adipisicing elit. Minus, tempore. <a href="">Reply</a> </li>
+                <ul className='ReplyThread'>
+                    <li className='reply'>Reply1 </li>
+                    <li className='reply'>Reply2</li>
+                    <a href="">All Comments</a>
                 </ul>
+                
         </ul>
     </>
   )

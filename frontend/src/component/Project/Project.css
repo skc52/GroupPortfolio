@@ -11,7 +11,7 @@
 
 .projectShell{
     border: 2px solid black;
-    border-radius: 10%;
+    border-radius: 5%;
     padding: 10px;
     width: 60%;
     margin: 20px auto;
@@ -23,6 +23,24 @@
     align-items: center;
     
 }
+.techStackContainer{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.techStack{
+    margin-top: 0px;
+    border: 2px solid black;
+    display: flex;
+    list-style: none;
+    flex-direction: row;
+    justify-content: space-between;
+    padding-left: 0;
+    
+}
+.techStack > li{
+    margin: 2px 3px;
+}
 .likeProject{
     margin-top: 10px;
 }
@@ -30,6 +48,9 @@
     color: green;
     cursor: pointer;
 
+}
+.commentSection{
+    overflow-y: scroll;
 }
 .commentInput{
     font-size: 15px;

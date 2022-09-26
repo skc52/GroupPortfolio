@@ -23,6 +23,17 @@ const Project = () => {
             <p className='ProjectDescription'>
                 Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorem fugit sapiente tempora in illo eveniet assumenda fuga eos odio aliquid?
             </p>
+
+            <div className='techStackContainer'>
+                <h3>Skills/Technologies</h3>
+                <ul className='techStack'>
+                    <li>Express</li>
+                    <li>Node</li>
+                    <li>Express</li>
+                    <li>Node</li>
+                </ul>
+            </div>
+
             <div className='linkGroups'>
                 <Link>
                     <YouTube/>
@@ -44,8 +55,11 @@ const Project = () => {
       
             <h3>Comments</h3>
             <input type="text" className='commentInput'/>
-            <Comment/>
-            <Comment/>
+            <div className='commentSection'>
+                <Comment/>
+                <Comment/>
+            </div>
+            
         </div>
 
 
