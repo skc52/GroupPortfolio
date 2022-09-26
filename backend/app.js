@@ -9,12 +9,15 @@ app.use(cookieParser());
 // app.use(express.urlencoded({extended: true}));
 //Route Imports
 const user = require("./routes/userRoute");
+const project = require("./routes/projectRoute");
+const message = require("./routes/messageRoute");
+const comment = require("./routes/commentRoute")
 app.use("/api/v1", user);
+app.use("/api/v1", project);
+app.use("/api/v1", message);
+app.use("/api/v1", comment);
 
-
-console.log("de")
 //Error middleware
 app.use(errorMiddleware);
-console.log("ddws")
 
 module.exports = app;

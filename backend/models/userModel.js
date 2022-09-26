@@ -7,8 +7,7 @@ const sendToken = require("../utils/sendToken");
 const userSchema = new mongoose.Schema({
     name:{
         type:String,
-        required:[true, "Please enter your name"],
-        
+        required:[true, "Please enter your name"], 
     },
     email:{
         type:String,
@@ -28,9 +27,30 @@ const userSchema = new mongoose.Schema({
     },
     projects:[
         {
-            projectID:String,
+            type:String,
         }
     ],
+
+    //TODO :  add Location too - using react library we can get the location too
+
+    //TODO : what about work experience - People put in work experience too
+    
+    followers:[
+        {
+            type:String,
+        }
+    ],
+    following:[
+        {
+            type:String,
+        }
+    ],
+    followRequests:[
+        {
+            type:String,
+        }
+    ],
+    
     // avatar:{
         
     //     public_id:{
@@ -65,7 +85,6 @@ userSchema.pre("save", async function(next){
     //there will many instances of saving the user
     //but we only want to hash the password when we are
     // either creating the user or changing password
-
     if (this.isModified("password")){
         this.password = await bcryptjs.hash(this.password, 10);
     }

@@ -2,6 +2,8 @@
 
 
 const User = require("../models/userModel.js");
+const Project = require("../models/projectModel.js");
+
 const cloudinary = require("cloudinary");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
@@ -167,72 +169,149 @@ exports.resetPassword = async(req, res, next) => {
 
 //Send Activate email link
 exports.sendActivateLink = async(req, res, next) => {
-    const user = await User.findOne({email:req.body.email});
-    if (!user){
-        return next(new ErrorHandler("User not found", 404));
-    }
-
-    //if the account is already activated
-    if (!user.isActivated){
-        // Get reset password token
-        const activateToken = user.getActivateToken();
-        await user.save({validateBeforeSave:false});
-        const activateEmailUrl = `${req.protocol}://${req.get("host")}/api/v1/account/activate/${activateToken}`;
-        const message = `Click on the link below to activate your account \n ${activateEmailUrl}\n\n`
-        try {
-            await sendEmail({
-                email:user.email,
-                subject : "Account Activation Token",
-                message
-            });
+    try {
+        const user = await User.findOne({email:req.body.email});
+        if (!user){
+            return next(new ErrorHandler("User not found", 404));
+        }
     
+        //if the account is already activated
+        if (!user.isActivated){
+            // Get reset password token
+            const activateToken = user.getActivateToken();
+            await user.save({validateBeforeSave:false});
+            const activateEmailUrl = `${req.protocol}://${req.get("host")}/api/v1/account/activate/${activateToken}`;
+            const message = `Click on the link below to activate your account \n ${activateEmailUrl}\n\n`
+            try {
+                await sendEmail({
+                    email:user.email,
+                    subject : "Account Activation Token",
+                    message
+                });
+        
+                res.status(200).json({
+                    success:true,
+                    message:`Email sent to ${user.email} successfully`,
+                })
+            } catch (error) {
+                //Set the activateToken and expiry to undefined
+                user.activateToken = undefined;
+                user.activateExpire = undefined;
+                await user.save({validateBeforeSave:false});
+                return next(new ErrorHandler(error.message, 500));
+            }
+        }
+        else{
             res.status(200).json({
                 success:true,
-                message:`Email sent to ${user.email} successfully`,
+                message:"User is already activated."
             })
-        } catch (error) {
-            //Set the activateToken and expiry to undefined
-            user.activateToken = undefined;
-            user.activateExpire = undefined;
-            await user.save({validateBeforeSave:false});
-            return next(new ErrorHandler(error.message, 500));
         }
+    } catch (error) {
+        next(error);
     }
-    else{
-        res.status(200).json({
-            success:true,
-            message:"User is already activated."
-        })
-    }
+   
 }
 
 // Activate email
 exports.activateAccount = async(req, res, next) => {
-    const actvateToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
-    const user = await User.findOne({
-        activateToken,
-        activateExpire:{$gt : Date.now()}
-    })
+   try {
+        
+        const activateToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+        const user = await User.findOne({
+            activateToken,
+            activateExpire:{$gt : Date.now()}
+        })
 
-    if (!user){
-        return next (new ErrorHandler("Activatoon token is invalid or has been expired", 400));
-    }
+        if (!user){
+            return next (new ErrorHandler("Activation token is invalid or has been expired", 400));
+        }
 
-    user.isActivated = true;
-    user.activateToken = undefined;
-    user.activateExpire = undefined;
-    await user.save();
+        user.isActivated = true;
+        user.activateToken = undefined;
+        user.activateExpire = undefined;
+
+        await user.save();
+        sendToken(user, 200, res);
+   } catch (error) {
+        next(error);
+   }
     
 }
 
 // update user profile
 exports.updateProfile = async(req, res, next) => {
     try {
-        
+        const newUserData = {
+            name:req.body.name,
+            email:req.body.email,
+        };
+
+        //lets add cloudinary later
+        const user = await User.findByIdAndUpdate(req.user.id, newUserData,{
+            new:true,
+            runValidators:true,
+            useFindAndModify:false,
+        });
+    
+        res.status(200).json({
+            success:true,
+            user
+        });
     } catch (error) {
         next(error);
     }
 }
+
+//add project to the list
+exports.addProjects = async(req, res, next) => {
+    try {
+        const user = await User.findById(req.user.id);
+        //copy projects id and add it to 
+        const projectID = req.body.projectID;
+        const project = await Project.findById(projectID);
+
+        if (project.creatorID != req.user.id){
+            return next(new ErrorHandler("You cannot add this project since it is not yours", 400));
+        }
+        // TODO: make sure that this is a string
+        user.projects.push(projectID);
+        await user.save();
+
+        res.status(200).json({
+            success:true,
+            message:"Project added successfully!",
+        })
+
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+//delete project from the list
+exports.deleteProject = async(req, res, next) => {
+    try {
+        const user = await User.findById(req.user.id);
+        //copy projects id and add it to 
+        const projectID = req.body.projectID;
+
+        user.projects.filter((project, ind)=>{
+            return project._id != projectID;
+        })
+        await user.save();
+
+        res.status(200).json({
+            success:true,
+            message:"Project deleted successfully!"
+        })
+
+    } catch (error) {
+        next(error);
+    }
+}
+
+// filtering and searching
 
 
 
@@ -249,14 +328,18 @@ exports.getAllUsers = async (req, res, next) =>{
 
 //get a single user
 exports.getAUser = async(req, res, next)=>{
-    const user = await User.find(req.params.id);
-    if (!user){
-        return next(new ErrorHandler(`User with id : ${req.params.id} does not exist`));
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user){
+            return next(new ErrorHandler(`User with id : ${req.params.id} does not exist`));
+        }
+        res.status(200).json({
+            success:true,
+            user
+        })
+    } catch (error) {
+        next(error);
     }
-    res.status(200).json({
-        success:true,
-        user
-    })
 }
 
 
@@ -268,6 +351,7 @@ exports.updateUserRole = async(req, res, next) => {
         }
     
         //we will add cloudinary later
+
         const user = await User.findByIdAndUpdate(req.params.id, newUserData,{
             new:true,
             runValidators:true,
@@ -299,6 +383,170 @@ exports.deleteUser = async(req, res, next) => {
             message:"User deleted successfully!"
         });
     } catch (error) {
-        
+        next(error);
     }
 }
+
+
+exports.sendFollowRequest = async(req, res, next) => {
+    try {
+        const user2 = await User.findById(req.params.user2id);
+        
+        //check if user1 follows user2
+        //if yes then send an error message
+        if (user2.followers.includes(req.user.id)){
+            res.status(200).json({
+                success:false,
+                message:`You already follow ${user2.name}`
+            })
+        }
+        //if no
+        //then check if user1 has already sent the follow request
+        else{
+            if (user2.followRequests.includes(req.user.id)){
+                res.status(200).json({
+                    success:false,
+                    message:`You already sent follow request to ${user2.name}`
+                })
+            }
+            else{
+                user2.followRequests.push(req.user.id);
+                await user2.save();
+                res.status(200).json({
+                    success:true,
+                    message:`You sent follow request to ${user2.name}`,
+                })
+            }
+        }
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+exports.acceptFollowRequest = async(req, res, next) => {
+    try {
+        const user2 = await User.findById(req.params.user2id);
+        const user1 = await User.findById(req.user.id);
+        //check if user2 follows user1
+        if (user1.followers.includes(req.params.user2id)){
+            res.status(200).json({
+                success:false,
+                message: `${user2.name} already follows you`
+            })
+        }
+
+        else{
+            if (user1.followRequests.includes(req.params.user2id)){
+                user1.followers.push(req.params.user2id);
+                user2.following.push(req.user.id);
+                //delete the follow request
+                user1.followRequests = user1.followRequests.filter((id, ind)=>{
+                    return id !== req.params.user2id;
+                })
+
+                await user1.save();
+                await user2.save();
+
+                res.status(200).json({
+                    success:true,
+                    message:`${user2.name} now follows you`,
+                })
+            }
+
+            else{
+                res.status(200).json({
+                    success:false,
+                    message:`There is no follow request from ${user2.name}`
+                })
+            }
+        }
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+exports.unfollow = async(req, res, next) => {
+    try {
+        //you are user1
+        //you want to unfollow user2
+        //remove user2 from user1 following list
+        //remove user1 from user2 followers list
+        const user1 = await User.findById(req.user.id);
+        const user2 = await User.findById(req.params.user2id);
+
+        //check if user1 follows user2
+        if (user1.following.includes(req.params.user2id)){
+            //remove
+            user1.following = user1.following.filter((id, ind)=>{
+                return id !== req.params.user2id;
+            })
+            user2.followers = user2.followers.filter((id, ind)=>{
+                return id !== req.user.id;
+            })
+
+            await user1.save();
+            await user2.save();
+            res.status(200).json({
+                success:true,
+                message:`You unfollowed ${user2.name}`
+            })
+        }
+        else{
+            res.status(200).json({
+                success:false,
+                message:`You don't follow ${user2.name}`
+            })
+        }
+    } catch (error) {
+        next(error);
+    }
+}
+
+
+exports.removeFollowing = async(req, res, next) => {
+    try {
+        //user1 removes user2 from his followers list
+        //user2 following list automatically gets updated
+        const user1 = await User.findById(req.user.id);
+        const user2 = await User.findById(req.params.user2id);
+
+        if (user1.followers.includes(req.params.user2id)){
+            user1.followers = user1.followers.filter((id, ind)=>{
+                return id!== req.params.user2id;
+            })
+            user2.following = user2.following.filter((id, ind)=>{
+                return id!== req.user.id;
+            })
+            await user1.save();
+            await user2.save();
+            res.status(200).json({
+                success:true,
+                message:`You removed ${user2.name} from your following`
+            })
+
+        }
+        else{
+            res.status(200).json({
+                success:false,
+                message:`${user2.name} does not follow you`
+            })
+        }
+
+    } catch (error) {
+        next(error)
+    }
+}
+
+
+// give the number of followers
+
+// give the number of following
+
+
+// TODO: update the location of the user
+
+// TODO : add/update work experience
+
+

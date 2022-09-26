@@ -1,0 +1,24 @@
+
+
+.Profile{
+    
+    display: flex;
+    justify-content: space-evenly;
+    width: 70%;
+    margin: 2vmax auto;
+    border: 2px solid black;
+    border-radius: 20%;
+    box-shadow: 10px 10px 10px #888888;
+    /* position: fixed; */
+}
+
+.Profile > a > svg{
+    font-size: 2.4vmax;
+    margin-top: 0.2vmax;
+}
+
+.Profile > a > svg :hover {
+    color: green;
+}
+
+
